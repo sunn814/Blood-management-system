@@ -26,7 +26,10 @@ exports.register = async (req, res) => {
       password,
       role: role || "donor",
       phone,
-      bloodGroup,
+      // The frontend sends "" when "Select blood group (optional)" is left
+      // unchanged; the schema only allows a real blood group or null, so
+      // convert any empty string to null before saving.
+      bloodGroup: bloodGroup ? bloodGroup : null,
     });
 
     const token = generateToken(user);
