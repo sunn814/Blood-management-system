@@ -34,31 +34,52 @@ export default function BloodStock() {
     return "high";
   };
 
+  const LEVEL_TEXT = { low: "Low", medium: "Medium", high: "Good" };
+  const FULL_UNITS = 30; // gauge is full at 30 units
+
   return (
     <div className="page">
-      <h2>Blood Stock</h2>
+      <h2>Blood stock</h2>
+      <p className="page-sub">Units available for each blood group.</p>
       <div className="stock-grid">
-        {stock.map((s) => (
-          <div key={s.bloodGroup} className={`stock-card ${getLevelClass(s.unitsAvailable)}`}>
-            <h3>{s.bloodGroup}</h3>
-            {editing === s.bloodGroup ? (
-              <>
-                <input
-                  type="number"
-                  value={units}
-                  onChange={(e) => setUnits(e.target.value)}
-                  min="0"
-                />
-                <button onClick={() => saveEdit(s.bloodGroup)}>Save</button>
-              </>
-            ) : (
-              <>
-                <p className="units">{s.unitsAvailable} units</p>
-                {user.role === "admin" && <button onClick={() => startEdit(s)}>Edit</button>}
-              </>
-            )}
-          </div>
-        ))}
+        {stock.map((s) => {
+          const level = getLevelClass(s.unitsAvailable);
+          const fill = Math.min(100, (s.unitsAvailable / FULL_UNITS) * 100);
+          return (
+            <div key={s.bloodGroup} className={`stock-card ${level}`} style={{ "--fill": `${fill}%` }}>
+              <div className="gauge" aria-hidden="true">
+                <span />
+              </div>
+              <div className="stock-info">
+                <h3>{s.bloodGroup}</h3>
+                {editing === s.bloodGroup ? (
+                  <>
+                    <input
+                      type="number"
+                      aria-label={`Units of ${s.bloodGroup}`}
+                      value={units}
+                      onChange={(e) => setUnits(e.target.value)}
+                      min="0"
+                    />
+                    <button onClick={() => saveEdit(s.bloodGroup)}>Save</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="units">
+                      <b>{s.unitsAvailable}</b> units
+                    </p>
+                    <p className="level-text">{LEVEL_TEXT[level]}</p>
+                    {user.role === "admin" && (
+                      <button className="ghost" onClick={() => startEdit(s)}>
+                        Edit units
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

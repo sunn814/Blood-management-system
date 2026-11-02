@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import api from "../api/axios";
+import LocationButton from "../components/LocationButton";
 import { useAuth } from "../context/AuthContext";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -27,7 +29,7 @@ export default function Donors() {
 
   useEffect(() => {
     if (user.role === "admin") fetchDonors();
-    else fetchMyProfile();
+    else if (user.role === "donor") fetchMyProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -63,6 +65,8 @@ export default function Donors() {
     }
   };
 
+  if (user.role === "hospital") return <Navigate to="/matcher" replace />;
+
   if (user.role !== "admin") {
     return (
       <div className="page">
@@ -78,6 +82,23 @@ export default function Donors() {
               {myDonor.lastDonationDate
                 ? new Date(myDonor.lastDonationDate).toLocaleDateString()
                 : "Never donated yet"}
+            </p>
+            <p>
+              <strong>Location:</strong> {myDonor.location ? "Saved" : "Not added yet"}{" "}
+              <LocationButton
+                label="Add my location"
+                saved={!!myDonor.location}
+                onLocate={async (lat, lng) => {
+                  const { data } = await api.put(`/donors/${myDonor._id}`, { latitude: lat, longitude: lng });
+                  setMyDonor(data);
+                }}
+              />
+            </p>
+            <p>
+              <strong>Status:</strong>{" "}
+              {myDonor.eligible
+                ? "Eligible to donate"
+                : `Eligible again on ${new Date(myDonor.nextEligibleDate).toLocaleDateString()}`}
             </p>
           </div>
         ) : (
@@ -117,7 +138,15 @@ export default function Donors() {
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               required
             />
-            <button type="submit">Register as Donor</button>
+            <div>
+              <LocationButton
+                label="Add my location"
+                saved={form.latitude !== undefined}
+                onLocate={(lat, lng) => setForm({ ...form, latitude: lat, longitude: lng })}
+              />
+              <small> Optional. Lets hospitals find donors nearby. Only an approximate area is shown.</small>
+            </div>
+            <button type="submit">Register as donor</button>
           </form>
         )}
       </div>
@@ -152,6 +181,7 @@ export default function Donors() {
             <th>Phone</th>
             <th>Total Donations</th>
             <th>Last Donation</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -166,7 +196,18 @@ export default function Donors() {
                 {d.lastDonationDate ? new Date(d.lastDonationDate).toLocaleDateString() : "—"}
               </td>
               <td>
-                <button onClick={() => handleRecordDonation(d._id)}>Record Donation</button>
+                {d.eligible ? (
+                  <span className="badge fulfilled">Eligible</span>
+                ) : (
+                  <span className="badge pending">
+                    Wait till {new Date(d.nextEligibleDate).toLocaleDateString()}
+                  </span>
+                )}
+              </td>
+              <td>
+                <button disabled={!d.eligible} onClick={() => handleRecordDonation(d._id)}>
+                  Record Donation
+                </button>
                 <button className="danger" onClick={() => handleDelete(d._id)}>
                   Delete
                 </button>
@@ -175,7 +216,7 @@ export default function Donors() {
           ))}
           {donors.length === 0 && (
             <tr>
-              <td colSpan="6">No donors found</td>
+              <td colSpan="7">No donors found</td>
             </tr>
           )}
         </tbody>

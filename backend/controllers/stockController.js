@@ -1,6 +1,7 @@
 const BloodStock = require("../models/BloodStock");
-
-const ALL_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+const { BLOOD_GROUPS } = require("../utils/compatibility");
+const { fail } = require("../utils/helpers");
+const audit = require("../utils/audit");
 
 // @route  GET /api/stock
 exports.getStock = async (req, res) => {
@@ -8,27 +9,35 @@ exports.getStock = async (req, res) => {
     const stock = await BloodStock.find();
     // ensure every blood group shows up even if no record yet
     const existingGroups = stock.map((s) => s.bloodGroup);
-    const missing = ALL_GROUPS.filter((g) => !existingGroups.includes(g)).map((g) => ({
+    const missing = BLOOD_GROUPS.filter((g) => !existingGroups.includes(g)).map((g) => ({
       bloodGroup: g,
       unitsAvailable: 0,
     }));
     res.json([...stock, ...missing]);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch stock", error: err.message });
+    fail(res, 500, "Failed to fetch stock", err);
   }
 };
 
 // @route  PUT /api/stock/:bloodGroup  (admin manually adjusts units)
 exports.updateStock = async (req, res) => {
   try {
-    const { unitsAvailable } = req.body;
+    const { bloodGroup } = req.params;
+    const units = Number(req.body.unitsAvailable);
+    if (!BLOOD_GROUPS.includes(bloodGroup)) {
+      return res.status(400).json({ message: "Invalid blood group" });
+    }
+    if (!Number.isInteger(units) || units < 0 || units > 10000) {
+      return res.status(400).json({ message: "Units must be a whole number (0 or more)" });
+    }
     const stock = await BloodStock.findOneAndUpdate(
-      { bloodGroup: req.params.bloodGroup },
-      { unitsAvailable },
+      { bloodGroup },
+      { unitsAvailable: units },
       { upsert: true, new: true, runValidators: true }
     );
+    audit(req, "update_stock", bloodGroup, `Set to ${units} units`);
     res.json(stock);
   } catch (err) {
-    res.status(500).json({ message: "Failed to update stock", error: err.message });
+    fail(res, 500, "Failed to update stock", err);
   }
 };

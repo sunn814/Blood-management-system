@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,34 +17,41 @@ export default function Login() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(err.response?.data?.message || "Could not log in. Check your connection and try again.");
     }
   };
 
   return (
-    <div className="auth-card">
-      <h2>Login</h2>
+    <AuthLayout title="Log in" subtitle="Use the email and password you registered with.">
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Login</button>
+        <div className="field">
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button type="submit">Log in</button>
       </form>
-      <p>
-        No account? <Link to="/register">Register here</Link>
+      <p className="auth-switch">
+        New here? <Link to="/register">Create an account</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

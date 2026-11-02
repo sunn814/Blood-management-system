@@ -10,6 +10,51 @@ A full-stack Blood Bank / Blood Management System built with MongoDB, Express, R
 - **Blood Requests** — donors/hospitals raise a request for a patient; admin approves/rejects/fulfills (fulfilling auto-deducts from stock, with a stock-availability check)
 - **Reports** — admin dashboard: total donors, total/pending/fulfilled requests, donations this month, stock by group, requests by group
 
+## New in this version
+
+- **Blood Compatibility Matcher** (`/matcher`, admin + hospital) — enter a patient's blood group; the system lists every compatible group (exact match first, universal donor O- last), the stock of each, and all *eligible* registered donors, with click-to-call phone numbers. API: `GET /api/donors/compatible?bloodGroup=A+`
+- **Stock substitution** — if the exact group is out of stock, the admin can fulfil a request from a compatible group (e.g. A+ patient from O+). The request stores which group was used (`fulfilledFrom`).
+- **Urgent & low-stock alerts** (dashboard, `GET /api/alerts`) — admin sees open high-urgency requests; donors see if their blood group can help urgent patients and when they are eligible again; everyone sees low-stock groups (5 units or less).
+- **Reports charts** — bar charts of stock and requests per blood group (`/reports`)
+- **Request tracking** (`/requests/:id`) — progress steps (Pending → Approved → Fulfilled) and a full history of who changed the status and when. Only the admin and the person who raised the request can open it. API: `GET /api/requests/:id`
+- **Map + radius search** — donors and hospitals can add a location (browser location). In Find donors, choose a distance (5–100 km) and see eligible compatible donors on an OpenStreetMap map, nearest first. Uses MongoDB `2dsphere` + `$geoNear`. Hospitals only see approximate pins (about 1 km) to protect donor privacy.
+- **Dark mode** — toggle in the sidebar; remembers your choice and follows the device setting by default.
+
+- **Donor eligibility** is now calculated from the last donation date (3-month rule) instead of a stored flag.
+
+## Security fixes
+
+- Public registration can no longer create admins (role is forced to `donor`/`hospital`). Create admins with: `npm run create-admin -- "Name" email password`
+- Donors can only edit their own profile; only admins can list all donors (phone numbers are private)
+- Request status changes follow rules (Pending → Approved/Rejected → Fulfilled); stock deduction is atomic so a request can never be fulfilled twice
+- Input validation, regex escaping on search, NoSQL-injection type checks, `helmet`, rate limiting on login/register, CORS limited via `CLIENT_URL`
+- `.env` is never committed; use `.env.example`
+
+## Run tests
+
+```bash
+cd backend
+npm test
+```
+
+## Security hardening (after attacker-style review)
+
+- **Hospital approval** - new hospital accounts must be approved by an admin (Admin page) before they can search donors or raise requests
+- **Donor privacy** - hospitals never receive addresses or donation history; phone numbers are masked until "Show number" is pressed (20 per day per hospital, every reveal is logged); distances are rounded to whole km
+- **Rate limits** - 400 requests / 15 min per IP on the API, 30 / 15 min on login and register, 30 searches / 10 min and 10 new requests / hour per user
+- **Login** - 5 wrong passwords lock the account for 15 minutes, unknown emails take the same time as real ones, passwords need 8+ characters with a letter and a number
+- **Tokens** - valid 1 day, signed with a fixed algorithm, and the user's role is read from the database on every request, so deleted or demoted users lose access immediately
+- **Fake requests** - only admins and approved hospitals can mark a request High urgency; one account can have at most 5 open requests
+- **Input limits** - length limits and phone format checks on all text fields
+- **Audit log** - donations, deletions, stock changes, request decisions, hospital approvals and number reveals are recorded (Admin page)
+- **Headers** - Vercel sends X-Frame-Options, nosniff, Referrer-Policy and Permissions-Policy
+- **Packages** - `npm audit` shows 0 vulnerabilities for backend production packages
+
+### Before you deploy
+1. Rotate the MongoDB password and `JWT_SECRET` (the old ones were committed to git).
+2. Render environment: `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL` (your Vercel URL, no trailing slash). `NODE_ENV=production` is also recommended.
+3. Existing hospital accounts stay approved. New ones need approval.
+
 ## Tech Stack
 
 - **Frontend:** React 18, React Router, Axios, Vite

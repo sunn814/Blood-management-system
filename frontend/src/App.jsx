@@ -9,16 +9,22 @@ import Donors from "./pages/Donors";
 import BloodStock from "./pages/BloodStock";
 import Requests from "./pages/Requests";
 import Reports from "./pages/Reports";
+import Matcher from "./pages/Matcher";
+import RequestTrack from "./pages/RequestTrack";
+import Admin from "./pages/Admin";
+import { ThemeProvider } from "./context/ThemeContext";
 
 function Home() {
   const { user } = useAuth();
   return <Navigate to={user ? "/dashboard" : "/login"} replace />;
 }
 
-export default function App() {
+function Shell() {
+  const { user } = useAuth();
   return (
-    <AuthProvider>
+    <div className={user ? "app-shell" : "public-shell"}>
       <Navbar />
+      <main className="main">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -56,6 +62,30 @@ export default function App() {
           }
         />
         <Route
+          path="/requests/:id"
+          element={
+            <PrivateRoute>
+              <RequestTrack />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <Admin />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/matcher"
+          element={
+            <PrivateRoute allowedRoles={["admin", "hospital"]}>
+              <Matcher />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/reports"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
@@ -64,6 +94,17 @@ export default function App() {
           }
         />
       </Routes>
-    </AuthProvider>
+      </main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <Shell />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import Alerts from "../components/Alerts";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -8,6 +9,15 @@ export default function Dashboard() {
     <div className="page">
       <h2>Welcome, {user.name} 👋</h2>
       <p>Role: {user.role}</p>
+
+      <Alerts />
+
+      {user.role === "hospital" && user.approved === false && (
+        <p className="info">
+          Your hospital account is waiting for admin approval. You can search donors and raise requests once
+          it is approved.
+        </p>
+      )}
 
       <div className="card-grid">
         <Link className="card" to="/stock">
@@ -22,6 +32,12 @@ export default function Dashboard() {
               : "Raise or track your blood requests"}
           </p>
         </Link>
+        {(user.role === "admin" || user.role === "hospital") && (
+          <Link className="card" to="/matcher">
+            <h3>Find Compatible Donors</h3>
+            <p>Enter a patient's blood group and see who can donate</p>
+          </Link>
+        )}
         {user.role === "admin" && (
           <>
             <Link className="card" to="/donors">
