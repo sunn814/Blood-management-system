@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
+// const cors = require("cors");
+const corsMiddleware = require("./middleware/corsMiddleware");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
@@ -25,17 +26,15 @@ app.set("trust proxy", 1); // needed on Render so rate limiting sees the real cl
 connectDB();
 
 app.use(helmet());
-// CLIENT_URL can hold one or more allowed frontend URLs separated by commas.
-// If it is not set (local development) all origins are allowed.
-if (!process.env.CLIENT_URL && isProduction()) {
-  console.warn("WARNING: CLIENT_URL is not set, so any website can call this API. Set it to your frontend URL.");
-}
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",").map((u) => u.trim().replace(/\/$/, ""))
-  : true;
-app.use(cors({ origin: allowedOrigins }));
-app.use(express.json({ limit: "10kb" }));
 
+// CORS configuration
+if (!process.env.CLIENT_URL && isProduction()) {
+  console.warn("WARNING: CLIENT_URL is not set.");
+}
+
+app.use(corsMiddleware);
+
+app.use(express.json({ limit: "10kb" }));
 // Slow down password guessing on login/register
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
